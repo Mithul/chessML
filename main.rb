@@ -1,6 +1,10 @@
 require_relative 'Horse'
+require_relative 'Gui'
 require_relative 'Pawn'
 require_relative 'King'
+require_relative 'Bishop'
+require_relative 'Queen'
+require_relative 'Rook'
 require_relative 'tile'
 require_relative 'utils/probability_picker'
 
@@ -69,6 +73,12 @@ def decompress_board cboard
 				piece = Pawn.new i/8+1,i%8+1,board,color
 			elsif parts[1] == 'K'
 				piece = King.new i/8+1,i%8+1,board,color
+			elsif parts[1] == 'Q'
+				piece = Queen.new i/8+1,i%8+1,board,color
+			elsif parts[1] == 'R'
+				piece = Rook.new i/8+1,i%8+1,board,color
+			elsif parts[1] == 'B'
+				piece = Bishop.new i/8+1,i%8+1,board,color
 			end
 			board[i/8+1][i%8+1].set_piece piece
 		end
@@ -101,6 +111,7 @@ def run
 
 	white_pieces = []
 	black_pieces = []
+
 	white_pieces << Horse.new(1,2,board,'white')
 	board[1][2].set_piece white_pieces.last
 	black_pieces << Horse.new(8,2,board,'black')
@@ -110,6 +121,31 @@ def run
 	board[1][7].set_piece white_pieces.last
 	black_pieces << Horse.new(8,7,board,'black')
 	board[8][7].set_piece black_pieces.last
+
+	white_pieces << Bishop.new(1,3,board,'white')
+	board[1][3].set_piece white_pieces.last
+	black_pieces << Bishop.new(8,3,board,'black')
+	board[8][3].set_piece black_pieces.last
+
+	white_pieces << Bishop.new(1,6,board,'white')
+	board[1][6].set_piece white_pieces.last
+	black_pieces << Bishop.new(8,6,board,'black')
+	board[8][6].set_piece black_pieces.last
+
+	white_pieces << Rook.new(1,1,board,'white')
+	board[1][1].set_piece white_pieces.last
+	black_pieces << Rook.new(8,1,board,'black')
+	board[8][1].set_piece black_pieces.last
+
+	white_pieces << Rook.new(1,8,board,'white')
+	board[1][8].set_piece white_pieces.last
+	black_pieces << Rook.new(8,8,board,'black')
+	board[8][8].set_piece black_pieces.last
+
+	white_pieces << Queen.new(1,5,board,'white')
+	board[1][5].set_piece white_pieces.last
+	black_pieces << Queen.new(8,5,board,'black')
+	board[8][5].set_piece black_pieces.last
 
 	(1..8).each do |y|
 		white_pieces << Pawn.new(2,y,board,'white')
@@ -126,6 +162,7 @@ def run
 	# puts horse
 	# 8.times do
 	# Thread.new{
+	gui = Gui.new
 	10000.times do |turn|
 		if turn%2==0
 			current_turn_color = "white"
@@ -134,6 +171,8 @@ def run
 			current_turn_color = "black"
 			pieces = black_pieces
 		end
+
+
 		moves = []
 		piece_type_prob = []
 		pieces.each_with_index do |piece,i|
@@ -161,9 +200,10 @@ def run
 		# puts p.to_s
 
 		current_board = {board: Marshal.load(Marshal.dump(board)).dup, move: nil}
-
+		sleep 1
 		# current_board = boards[-1]
 		cboard = compress_board current_board[:board]
+		gui.draw cboard
 		# puts 'c '+cboard.join.to_s
 		# puts 'o '+old_boards.first.to_s
 		# cboard = old_boards.first.dup
@@ -286,34 +326,48 @@ end
 @mutex = Mutex.new
 @old_boards = read_file @file
 
-t= []
-threads = 8
-iterations = 10
-threads.times do |i|
-	t[i] = Thread.new{
-		iterations.times do |iter|
-			begin
-				# @old_boards = read_file @file
-				# puts @old_boards
-				# decompress_board @old_boards.first
-				run
-			rescue SystemExit, Interrupt
-				f = File.open(@file,"w")
-				f.write @old_boards
-				f.close
-				raise
+begin
+	t= []
+	threads = 1
+	iterations = 1
+	threads.times do |i|
+		t[i] = Thread.new{
+			iterations.times do |iter|
+				begin
+					# @old_boards = read_file @file
+					# puts @old_boards
+					# decompress_board @old_boards.first
+					run
+				rescue SystemExit, Interrupt
+					f = File.open(@file,"w")
+					f.write @old_boards
+					f.close
+					raise
+				end
 			end
-		end
-	}
+		}
+	end
+	threads.times do |i|
+		t[i].join
+	end
+	trap :INT do
+	  Thread.main.raise Interrupt
+	end
+rescue SystemExit, Interrupt
+  puts 'Error'
+  raise
+rescue StandardError
+  puts 'Error'
+  raise
+rescue Exception => e
+	puts e
+ensure
+	# if iter%5 == 0 and iter !=0
+	puts "Writing"
+	f = File.open(@file,"w")
+	f.write @old_boards
+	f.close
+	puts "Done"
+	# end
 end
-threads.times do |i|
-	t[i].join
-end
-# if iter%5 == 0 and iter !=0
-puts "Writing"
-f = File.open(@file,"w")
-f.write @old_boards
-f.close
-puts "Done"
-# end
 

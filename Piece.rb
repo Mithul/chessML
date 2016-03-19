@@ -12,10 +12,12 @@ class Piece
 	end
 
 	def move move
-		@board[@x][@y].set_piece nil
-		@x=move[0]
-		@y=move[1]
+			@board[@x][@y].set_piece nil
+			@x=move[0]
+			@y=move[1]
 		if @board[move[0]][move[1]].piece and @board[move[0]][move[1]].piece.color != @color
+			
+
 			piece = @board[move[0]][move[1]].piece
 			puts piece.color.to_s.capitalize+' '+piece.class.to_s+' Killed'
 			piece.alive = false
