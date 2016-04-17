@@ -1,1 +1,1 @@
-ruby 'jruby-head'
+#ruby 'jruby-head'
