@@ -2,7 +2,7 @@ require_relative 'Piece'
 
 class King < Piece
 	def initialize x,y,board,color
-		super x,y,board,color,100
+		super x,y,board,color,100000
 	end
 
 	def check_possible_moves
@@ -24,6 +24,31 @@ class King < Piece
 			end
 		end
 		@possible_moves
+	end
+
+	def under_check? oponent_pieces
+		checked_places = []
+		causer = nil
+		oponent_pieces.each do |piece|
+			# puts piece.class.to_s + ' ' + piece.color + ' ' + piece.check_possible_moves.map{|p| [p[0],p[1]]}.to_s
+			checked_places << piece.check_possible_moves.map{|p| [p[0],p[1],1000]}
+			if piece.check_possible_moves.map{|p| [p[0],p[1]]}.include? self.position?
+				# puts "Im under a CHECK!!!"
+				causer = piece
+				# break
+			end
+		end
+		if causer
+			moves = self.check_possible_moves
+			safe_moves = (moves - checked_places).uniq
+			# puts safe_moves.to_s + 'MOVES'
+			if safe_moves.empty?
+				# puts "Someone kill him!!!"
+			end
+			return safe_moves[rand(safe_moves.length)]
+		else 
+			return false
+		end
 	end
 
 	def move move

@@ -45,6 +45,8 @@ def read_file file
 	begin
 		f = File.open(file,"r")
 		text = f.read
+		require 'zlib'
+		text = Zlib::Inflate.inflate(text)
 		boards = eval text
 	rescue
 	end
@@ -85,6 +87,17 @@ def decompress_board cboard
 	end
 	# print_board board
 	# puts board.to_s
+end
+
+def make_move piece, move
+	old_pos = piece.position?
+	change = piece.move move
+	pos = piece.position?
+	piece_type = piece.class.to_s
+	piece_color = piece.color.to_s
+	puts piece_color+ ' ' + piece_type+' moved from '+old_pos.to_s+' to '+ pos.to_s
+	move = old_pos.to_s+':'+pos.to_s
+	return move,change
 end
 
 def run
@@ -155,15 +168,21 @@ def run
 	end
 	# puts 	pieces.map{|p| p.class}.join(', ')
 	# board[x][y].set_piece pieces.last
-	black_pieces << King.new(8,4,board,'black')
+	black_king = King.new(8,4,board,'black')
+	white_king = King.new(1,4,board,'white')
+	black_pieces << black_king
 	board[8][4].set_piece black_pieces.last
-	white_pieces << King.new(1,4,board,'white')
+	white_pieces << white_king
 	board[1][4].set_piece white_pieces.last
 	# puts horse
 	# 8.times do
 	# Thread.new{
-	gui = Gui.new
-	10000.times do |turn|
+
+	gui = @guis.select{|g| !g.used}[0]
+	gui.used = true if gui
+
+	500.times do |turn|
+		puts 'turn '+turn.to_s
 		if turn%2==0
 			current_turn_color = "white"
 			pieces = white_pieces
@@ -186,6 +205,8 @@ def run
 			# puts moves[i].to_s
 		end
 		# puts pieces.map{|p| p.class if p.alive}.join(', ')
+		piece_type_prob = piece_type_prob.uniq
+		piece_type_prob.delete(nil)
 		# puts piece_type_prob.to_s
 		if piece_type_prob[0] == nil
 			# puts 'Cannot move'
@@ -200,16 +221,36 @@ def run
 		# puts p.to_s
 
 		current_board = {board: Marshal.load(Marshal.dump(board)).dup, move: nil}
-		sleep 1
+		# sleep 2
 		# current_board = boards[-1]
 		cboard = compress_board current_board[:board]
-		gui.draw cboard
+		gui.draw cboard if gui
 		# puts 'c '+cboard.join.to_s
 		# puts 'o '+old_boards.first.to_s
 		# cboard = old_boards.first.dup
 		# index = old_boards.index(cboard.join)
 		indeces = old_boards.each_index.select{|i| old_boards[i] == cboard.join}
 		# puts indeces.to_s
+
+
+		# TODO
+		checked = false
+		puts current_turn_color
+		if current_turn_color == "white"
+			# puts "checking the check"
+			checked = white_king.under_check? black_pieces.select{|b| b.alive}
+			king = white_king
+		elsif current_turn_color == "black"
+			# puts "checking the check"
+			checked = black_king.under_check? white_pieces.select{|b| b.alive}
+			king = black_king
+		end
+				
+		if checked
+			make_move king, checked
+			next
+		end
+
 		max = 0
 		best_index = nil
 		indeces.each do |index|
@@ -248,14 +289,11 @@ def run
 		end
 
 		p = picker piece_type_prob
-
-		old_pos = pieces[p[2][0]].position?
-		change = pieces[p[2][0]].move moves[p[2][0]][p[2][1]]
-		pos = pieces[p[2][0]].position?
-		piece_type = pieces[p[2][0]].class.to_s
-		piece_color = pieces[p[2][0]].color.to_s
-		# puts piece_color+ ' ' + piece_type+' moved from '+old_pos.to_s+' to '+ pos.to_s
-		move = old_pos.to_s+':'+pos.to_s
+		move = moves[p[2][0]][p[2][1]]
+		# puts move.to_s
+		# puts p[2][0].to_s
+		# puts pieces[p[2][0]].to_s
+		move, change = make_move pieces[p[2][0]], move
 
 		current_board[:move] = move
 		boards << current_board
@@ -306,6 +344,7 @@ def run
 			# puts 'Win'
 			puts @count
 			# puts king1.position?.to_s
+			gui.used = false if gui
 			return
 			# exit
 		elsif change
@@ -313,7 +352,7 @@ def run
 			pieces << change
 		end
 		if change
-			# puts 'Changed to '+change.class.to_s
+			puts 'Changed to '+change.class.to_s
 		end
 	end
 	# }
@@ -326,33 +365,53 @@ end
 @mutex = Mutex.new
 @old_boards = read_file @file
 
+@guis = []
+
 begin
-	t= []
-	threads = 1
-	iterations = 1
-	threads.times do |i|
-		t[i] = Thread.new{
-			iterations.times do |iter|
-				begin
-					# @old_boards = read_file @file
-					# puts @old_boards
-					# decompress_board @old_boards.first
-					run
-				rescue SystemExit, Interrupt
-					f = File.open(@file,"w")
-					f.write @old_boards
-					f.close
-					raise
-				end
+	# t= []
+	threads = 8
+	iterations = 50
+	# threads.times do |i|
+	# 	gui = Gui.new
+	# 	@guis << gui
+	# 	t[i] = Thread.new{
+	# 		iterations.times do |iter|
+	# 			begin
+	# 				# @old_boards = read_file @file
+	# 				# puts @old_boards
+	# 				# decompress_board @old_boards.first
+	# 				run
+	# 			rescue SystemExit, Interrupt
+	# 				f = File.open(@file,"w")
+	# 				f.write @old_boards
+	# 				f.close
+	# 				raise
+	# 			end
+	# 		end
+	# 	}
+	# end
+	# threads.times do |i|
+	# 	t[i].join
+	# end
+	# trap :INT do
+	#   Thread.main.raise Interrupt
+	# end
+	require 'thread'
+	work_q = Queue.new
+	(0..iterations).to_a.each{|x| work_q.push x }
+	workers = (0...threads).map do
+		gui = Gui.new
+		@guis << gui
+	  Thread.new do
+	    begin
+	    	while x = work_q.pop(true)
+		        run
 			end
-		}
-	end
-	threads.times do |i|
-		t[i].join
-	end
-	trap :INT do
-	  Thread.main.raise Interrupt
-	end
+	    rescue ThreadError
+	    end
+	  end
+	end; "ok"
+workers.map(&:join); "ok"
 rescue SystemExit, Interrupt
   puts 'Error'
   raise
@@ -365,7 +424,8 @@ ensure
 	# if iter%5 == 0 and iter !=0
 	puts "Writing"
 	f = File.open(@file,"w")
-	f.write @old_boards
+	require 'zlib'
+	f.write Zlib::Deflate.deflate(@old_boards.to_s)
 	f.close
 	puts "Done"
 	# end

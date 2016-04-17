@@ -8,10 +8,12 @@ import java.awt.Color
 
 
 class Gui < JFrame
+    attr_accessor :used
   
     def initialize
         super "Tooltips"
         @buttons = []
+        @used = false
         self.initUI
     end
     
@@ -37,7 +39,7 @@ class Gui < JFrame
         
 
         self.setDefaultCloseOperation JFrame::EXIT_ON_CLOSE
-        self.setSize 300, 200
+        self.setSize 450, 450
         self.setLocationRelativeTo nil
         self.setVisible true
     end
@@ -66,4 +68,4 @@ class Gui < JFrame
   
 end
 
-Gui.new
+# Gui.new
