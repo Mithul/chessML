@@ -1,0 +1,15 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  winner_id: 
+  loser_id: 
+  start_time: 2016-04-17 18:42:33
+  end_time: 2016-04-17 18:42:33
+  board: MyText
+
+two:
+  winner_id: 
+  loser_id: 
+  start_time: 2016-04-17 18:42:33
+  end_time: 2016-04-17 18:42:33
+  board: MyText

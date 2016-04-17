@@ -1,0 +1,15 @@
+<%= simple_form_for(@game) do |f| %>
+  <%= f.error_notification %>
+
+  <div class="form-inputs">
+    <%# f.association :winner %>
+    <%# f.association :loser %>
+    <%# f.input :start_time %>
+    <%# f.input :end_time %>
+    <%= f.input :board, as: :hidden %>
+  </div>
+
+  <div class="form-actions">
+    <%= f.button :submit,'Start Game' %>
+  </div>
+<% end %>
