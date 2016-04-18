@@ -49,6 +49,19 @@ class Player
 		@boards << current_board
 	end
 
+	def get_opponent_pieces
+		pieces = []
+		(1..8).each do |i|
+			(1..8).each do |j|
+				piece = @board[i][j].piece
+				if piece and piece.color != @color
+					pieces << piece
+				end
+			end
+		end
+		return pieces
+	end
+
 	def play
 		pieces = @pieces
 		board = @board
@@ -102,10 +115,12 @@ class Player
 		checked = false
 		puts @color
 
-		checked = @king.under_check? @pieces.select{|b| b.alive}
+		checked = @king.under_check? get_opponent_pieces.select{|b| b.alive}
 		king = @king
-				
+		puts @king.position?.to_s
+		puts checked.to_s
 		if checked
+			puts 'Checked'
 			make_move king, checked
 			return
 		end
@@ -192,6 +207,12 @@ class Player
 			puts 'Changed to '+change.class.to_s
 		end
 		# @cmove = cmove
+	end
+
+	def change_piece piece, change
+		@pieces.delete piece
+		@pieces << change
+		@board[change.position?[0]][change.position?[1]].set_piece change
 	end
 
 	def generate_statistics boards, winner, loser

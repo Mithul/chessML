@@ -79,8 +79,10 @@ class GamesController < ApplicationController
     puts king
     puts $Old_boards.length
     player = $Players[game.id]
+    player.set_board board
     if !player
       player = Player.new(color,board,handle.get_pieces(color), king, nil, $Old_boards)
+      $Players[game.id] = player
       puts player.get_statistics().length
     end
     pmoves = piece.check_possible_moves.map{|c| [c[0],c[1]]}
@@ -92,10 +94,6 @@ class GamesController < ApplicationController
       return
     end
     move, change = player.make_move(piece,[to[0].to_i,to[1].to_i])
-    current_board = {board: Marshal.load(Marshal.dump(board)).dup, move: nil}
-    # puts current_board
-    current_board[:move] = move
-    player.add_board current_board
     if change == true
       game.end_time = Time.now
       game.save
@@ -103,9 +101,17 @@ class GamesController < ApplicationController
       $Old_boards = player.get_statistics
       ::ML.write_file Rails.root.join('config/initializers','statistics2.dat'), $Old_boards
       render :text => 'Game over'
+      $Players[game.id] = nil
       return
+    elsif change
+      puts 'need to change to '+change.class.to_s
+      player.change_piece piece, change
     end
     board = player.get_board
+    current_board = {board: Marshal.load(Marshal.dump(board)).dup, move: nil}
+    # puts current_board
+    current_board[:move] = move
+    player.add_board current_board
     king = handle.get_king(opp_color)
     puts '*'*100
     opp = Player.new(opp_color,board,handle.get_pieces(opp_color), king, nil, $Old_boards)
@@ -116,6 +122,7 @@ class GamesController < ApplicationController
       $Old_boards = opp.get_statistics
       ::ML.write_file Rails.root.join('config/initializers','statistics2.dat'), $Old_boards
       render :text => 'Game over'
+      $Players[game.id] = nil
       return
     end
     board = opp.get_board

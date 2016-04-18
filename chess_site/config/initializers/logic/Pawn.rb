@@ -45,7 +45,14 @@ class Pawn < Piece
 			return true
 		end
 		if @x==8 or @x==0
+			puts 'Changing pawn'
 			return piece = Queen.new(@x,@y,@board,@color)
 		end
+		if @color == 'black'
+			@value = 2+(7-@x)*8
+		else
+			@value = 2+(@x-2)*8
+		end
+		return false
 	end
 end
