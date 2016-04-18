@@ -20,7 +20,7 @@ class Pawn < Piece
 					@possible_moves << move
 				end
 
-				if !@moved and @board[@x+2*advance][@y].piece == nil
+				if !@moved and ((@x==2 and advance==1) or (@x==7 and advance==-1)) and @board[@x+2*advance][@y].piece == nil
 					move = [@x+2*advance,@y,2]
 					@possible_moves << move
 					@moved = true
