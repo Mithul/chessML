@@ -39,6 +39,7 @@ $(document).ready(function(){
 						$(tile).addClass('clickable');
 						console.log(tile);
 					});
+					$('.chessboard').addClass('moveSelect');
 					state=1;
 				}
 			});
