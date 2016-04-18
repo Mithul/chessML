@@ -2,7 +2,8 @@
 <div class="chessboard">
 	<% (1..8).each do |row| %>
 		<% (1..8).each do |col| %>
-			<div class="tile <%= ((row+col)%2==0) ? 'white' : 'black' %>" id="<%= row.to_s+col.to_s%>">&nbsp;<span class="piece" piece="<%= @cboard[(row-1)*8+col-1] %>"><%= raw(@handle.html_piece @cboard[(row-1)*8+col-1])%></span>&nbsp;</div>
+			<% color = ((row+col)%2==0) ? 'white' : 'black'%>
+			<div class="tile <%= color %> <%= 'clickable' if raw(@handle.html_piece @cboard[(row-1)*8+col-1]).length > 0 and @cboard[(row-1)*8+col-1][0] != @color.to_s.upcase[0]%> <%= 'opponent' if @cboard[(row-1)*8+col-1][0] == @color.to_s.upcase[0] %>" id="<%= row.to_s+col.to_s%>">&nbsp;<span class="piece" piece="<%= @cboard[(row-1)*8+col-1] %>"><%= raw(@handle.html_piece @cboard[(row-1)*8+col-1])%></span>&nbsp;</div>
 		<% end %>
 		<br>
 	<% end %>
