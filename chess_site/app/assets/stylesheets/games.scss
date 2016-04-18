@@ -28,9 +28,18 @@
     opacity: 1;
 }
 
-.opponent{
+.chessboard .opponent{
     /*cursor: pointer;*/
     opacity: 1;
+}
+.moveSelect .opponent{
+    /*cursor: pointer;*/
+    opacity: 0.4;
+}
+
+.moveSelect .clickable{
+    /*cursor: pointer;*/
+    opacity: 1 !important;
 }
 
 .black {
