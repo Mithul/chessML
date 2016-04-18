@@ -9,5 +9,6 @@ Rails.application.routes.draw do
   get '/auth/failure' => 'sessions#failure'
 
   get '/games/:id/play' => 'games#play', as: :play
+  get '/games/:id/move/:from' => 'games#check_move'
   get '/games/:id/move/:from/:to' => 'games#move'
 end

@@ -26,6 +26,30 @@ class GamesController < ApplicationController
     @handle = BoardHandle.new
     @cboard = eval @game.board
     @board = @handle.decompress_board @cboard
+    if !@game.winner == current_user
+      @color = 'white'
+    else
+      @color = 'black'
+    end
+  end
+
+  def check_move
+    game = Game.find(params[:id])
+    json = {success: true}
+    if game.end_time
+      json[:success] = false
+      render :json => json
+      return
+    end
+    handle = BoardHandle.new
+    cboard = eval game.board
+    board = handle.decompress_board cboard
+    from = params[:from]
+    tile=handle.get_piece from
+    piece=tile.piece
+    pmoves = piece.check_possible_moves.map{|c| c[0].to_s+c[1].to_s}
+    json[:moves]=pmoves
+    render :json => json
   end
 
   def move
@@ -43,8 +67,13 @@ class GamesController < ApplicationController
     tile=handle.get_piece from
     piece=tile.piece
     # handle.make_move(piece,[to[0].to_i,to[1].to_i])
-    color="white"
-    opp_color = "black"
+    if game.winner == current_user
+      color="white"
+      opp_color = "black"
+    else
+      opp_color="white"
+      color = "black"
+    end
     king = handle.get_king(color)
     puts '*'*100
     puts king
@@ -104,6 +133,7 @@ class GamesController < ApplicationController
     handle.new_board
     @game.board = handle.compress_board
     @game.start_time = Time.now
+    @game.winner = current_user
     @game.save
     redirect_to play_path(@game)
     # respond_to do |format|

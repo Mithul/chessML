@@ -19,9 +19,20 @@
     position: relative;
     padding: 0px;
     margin: 0px;
-    cursor: pointer;
+    opacity: 0.1;
     /*vertical-align:middle;*/
 }
+
+.clickable{
+    cursor: pointer;
+    opacity: 1;
+}
+
+.opponent{
+    /*cursor: pointer;*/
+    opacity: 1;
+}
+
 .black {
     background-color: #999;
 }

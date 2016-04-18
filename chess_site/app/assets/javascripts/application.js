@@ -20,15 +20,34 @@ var state = 0;
 var from;
 var to;
 $(document).ready(function(){
-	$('.tile').click(function(){
+	$('.chessboard').on('click','.tile.clickable',function(){
 		console.log(state);
 		tile = $(this).find('.piece');
 		if(state==0){
 			from = $(this).attr('id');
-			state=1;
+			var json;
+			$.get( "move/"+from, function( data ) {
+				// window.location = '';
+				console.log(data);
+				json = data;
+				state=0;
+				if(json.success){
+					$('.tile.clickable').removeClass('clickable');
+					json.moves.push(from);
+					$.each(json.moves,function(index, value){
+						tile = $('#'+value);
+						$(tile).addClass('clickable');
+						console.log(tile);
+					});
+					state=1;
+				}
+			});
 		}
 		else if(state==1){
 			to = $(this).attr('id');
+			if(from===to){
+				window.location = '';
+			}
 			console.log(from+' - '+to);
 			state=2;
 			$.get( "move/"+from+"/"+to, function( data ) {
