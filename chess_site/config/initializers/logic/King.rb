@@ -31,7 +31,7 @@ class King < Piece
 	end
 
 	def under_check? opponent_pieces, pieces, player
-		old_cboard = player.compress_board @board
+		# old_cboard = player.compress_board @board
 		checked_places = []
 		causer = true
 		completed_pieces = []
@@ -46,6 +46,7 @@ class King < Piece
 			end
 			causer = nil
 			piece = (pieces - completed_pieces)[0]
+			# mpiece = @board[piece.position?[0]][piece.position?[1]].piece
 			if !piece
 				return true, nil
 			end
@@ -67,7 +68,7 @@ class King < Piece
 			# 	end
 			# end
 			checked = check? opponent_pieces
-			@board = player.decompress_board old_cboard if checked
+			# @board = player.decompress_board old_cboard if checked
 		end
 		return piece, move
 	end

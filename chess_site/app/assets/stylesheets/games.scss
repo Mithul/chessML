@@ -3,11 +3,15 @@
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
 .chessboard {
-    width: 715px;
+    width: 725px;
     height: 690px;
     margin: auto;
     margin-top: 20px;
     border: 25px solid #333;
+}
+
+.big-piece{
+    font-size: 200px;
 }
 
 .tile{
