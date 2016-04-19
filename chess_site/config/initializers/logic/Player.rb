@@ -175,7 +175,7 @@ class Player
 			return
 		elsif kpiece
 			puts 'CHECKMATE'
-			# return true
+			return true
 		end
 
 		max = 0
