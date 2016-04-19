@@ -79,12 +79,12 @@ class GamesController < ApplicationController
     puts king
     puts $Old_boards.length
     player = $Players[game.id]
-    player.set_board board
     if !player
       player = Player.new(color,board,handle.get_pieces(color), king, nil, $Old_boards)
       $Players[game.id] = player
       puts player.get_statistics().length
     end
+    player.set_board board
     pmoves = piece.check_possible_moves.map{|c| [c[0],c[1]]}
     cmove = [to[0].to_i,to[1].to_i]
     if !(pmoves.include?(cmove))
@@ -125,9 +125,9 @@ class GamesController < ApplicationController
       $Players[game.id] = nil
       return
     end
-    board = opp.get_board
-    handle.set_board board
-    game.board = handle.compress_board
+    # board = opp.get_board
+    # handle.set_board board
+    game.board = opp.compress_board
     game.save
     render :text => 'done'
   end

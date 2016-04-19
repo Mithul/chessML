@@ -10,6 +10,54 @@ class Player
 		# @cmove = 0
 	end
 
+	def decompress_board cboard
+		board = []
+		white_pieces = []
+		black_pieces = []
+		black_king=nil
+		white_king=nil
+		positions = cboard
+		k=0
+		positions.each_with_index do |tile,i|
+			if i%8==0
+				board[i/8+1] = []
+			end
+			board[i/8+1][i%8+1] = Tile.new
+			if tile != '-'
+				king = nil
+				parts = tile.split('_')
+				color = "white" if parts[0]=='W'
+				color = "black" if parts[0]=='B'
+				king = nil
+				if parts[1] == 'H'
+					piece = Horse.new i/8+1,i%8+1,board,color
+				elsif parts[1] == 'P'
+					piece = Pawn.new i/8+1,i%8+1,board,color
+				elsif parts[1] == 'K'
+					piece = King.new i/8+1,i%8+1,board,color
+					king = piece
+				elsif parts[1] == 'Q'
+					piece = Queen.new i/8+1,i%8+1,board,color
+				elsif parts[1] == 'R'
+					piece = Rook.new i/8+1,i%8+1,board,color
+				elsif parts[1] == 'B'
+					piece = Bishop.new i/8+1,i%8+1,board,color
+				end
+				if color == "white"
+					white_pieces << piece
+					white_king = king if king
+				elsif color == "black"
+					black_pieces << piece
+					black_king = king if king
+				end
+				board[i/8+1][i%8+1].set_piece piece
+			end
+		end
+		# print_board board
+		# puts board.to_s
+		return board
+	end
+
 	def compress_board board=nil
 		if board == nil
 			board = @board
@@ -115,14 +163,19 @@ class Player
 		checked = false
 		puts @color
 
-		checked = @king.under_check? get_opponent_pieces.select{|b| b.alive}
+		kpiece, kmove = @king.under_check? get_opponent_pieces.select{|b| b.alive}, @pieces.select{|b| b.alive}, self
 		king = @king
 		puts @king.position?.to_s
 		puts checked.to_s
-		if checked
+		if kmove
 			puts 'Checked'
-			make_move king, checked
+			# make_move kpiece, kmove
+			@board = king.get_board
+			puts @board[kpiece.position?[0]][kpiece.position?[1]].piece
 			return
+		elsif kpiece
+			puts 'CHECKMATE'
+			# return true
 		end
 
 		max = 0
@@ -161,7 +214,6 @@ class Player
 			# sleep 1
 			# exit 
 		end
-
 		p = picker piece_type_prob
 		move = moves[p[2][0]][p[2][1]]
 		# puts move.to_s
@@ -213,6 +265,10 @@ class Player
 		@pieces.delete piece
 		@pieces << change
 		@board[change.position?[0]][change.position?[1]].set_piece change
+	end
+
+	def set_board board
+		@board = board
 	end
 
 	def generate_statistics boards, winner, loser
