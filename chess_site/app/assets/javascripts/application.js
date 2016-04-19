@@ -11,6 +11,7 @@
 // about supported directives.
 //
 //= require jquery
+//= require jquery.turbolinks
 //= require jquery_ujs
 //= require turbolinks
 //= require bootstrap-sprockets
@@ -27,7 +28,7 @@ $(document).ready(function(){
 			from = $(this).attr('id');
 			var json;
 			$.get( "move/"+from, function( data ) {
-				// window.location = '';
+				// Turbolinks.visit('');
 				console.log(data);
 				json = data;
 				state=0;
@@ -47,12 +48,12 @@ $(document).ready(function(){
 		else if(state==1){
 			to = $(this).attr('id');
 			if(from===to){
-				window.location = '';
+				Turbolinks.visit('');
 			}
 			console.log(from+' - '+to);
 			state=2;
 			$.get( "move/"+from+"/"+to, function( data ) {
-				window.location = '';
+				Turbolinks.visit('');
 				state=0;
 			});
 		}

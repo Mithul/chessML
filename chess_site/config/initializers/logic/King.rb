@@ -26,29 +26,50 @@ class King < Piece
 		@possible_moves
 	end
 
-	def under_check? oponent_pieces
+	def get_board
+		@board
+	end
+
+	def under_check? opponent_pieces, pieces, player
+		old_cboard = player.compress_board @board
 		checked_places = []
-		causer = nil
-		oponent_pieces.each do |piece|
-			# puts piece.class.to_s + ' ' + piece.color + ' ' + piece.check_possible_moves.map{|p| [p[0],p[1]]}.to_s
-			checked_places << piece.check_possible_moves.map{|p| [p[0],p[1],1000]}
-			if piece.check_possible_moves.map{|p| [p[0],p[1]]}.include? self.position?
-				# puts "Im under a CHECK!!!"
-				causer = piece
-				# break
+		causer = true
+		completed_pieces = []
+		completed_moves = {}
+		move = nil
+		piece = nil
+		old_pos = nil
+		checked = check? opponent_pieces
+		while checked
+			if piece and move and old_pos
+				player.make_move piece, old_pos
 			end
-		end
-		if causer
-			moves = self.check_possible_moves
-			safe_moves = (moves - checked_places).uniq
-			# puts safe_moves.to_s + 'MOVES'
-			if safe_moves.empty?
-				# puts "Someone kill him!!!"
+			causer = nil
+			piece = (pieces - completed_pieces)[0]
+			if !piece
+				return true, nil
 			end
-			return safe_moves[rand(safe_moves.length)]
-		else 
-			return false
+			i = pieces.index piece
+			completed_moves[i] = [] if !completed_moves[i]
+			move = (piece.check_possible_moves - completed_moves[i])[0]
+			if move
+				old_pos = piece.position?
+				player.make_move piece, move
+				completed_moves[i] << move
+			else
+				completed_pieces << piece
+			end
+			# pieces.each_with_index do |piece,i|
+			# 	moves = piece.check_possible_moves
+			# 	moves.each do |move|
+			# 		player.make_move piece, move
+			# 		puts 'made move'
+			# 	end
+			# end
+			checked = check? opponent_pieces
+			@board = player.decompress_board old_cboard if checked
 		end
+		return piece, move
 	end
 
 	def move move
@@ -56,5 +77,20 @@ class King < Piece
 		y=@y
 		super move
 		# check? [@x,@y]
+	end
+
+	private 
+	def check? opponent_pieces
+		opponent_pieces.each do |piece|
+			# puts piece.class.to_s + ' ' + piece.color + ' ' + piece.check_possible_moves.map{|p| [p[0],p[1]]}.to_s
+			# checked_places << piece.check_possible_moves.map{|p| [p[0],p[1],1000]}
+			if piece.check_possible_moves.map{|p| [p[0],p[1]]}.include? self.position?
+				# puts "Im under a CHECK!!!"
+				# causer = piece
+				# break
+				return true
+			end
+		end
+		return false
 	end
 end
