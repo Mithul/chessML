@@ -14,6 +14,9 @@ class GamesController < ApplicationController
 
   # GET /games/new
   def new
+    if !current_user
+      redirect_to new_session_path
+    end
     @game = Game.new
   end
 
@@ -26,11 +29,12 @@ class GamesController < ApplicationController
     @handle = BoardHandle.new
     @cboard = eval @game.board
     @board = @handle.decompress_board @cboard
-    if !@game.winner == current_user
+    if @game.winner != current_user
       @color = 'white'
     else
       @color = 'black'
     end
+    puts @color
   end
 
   def check_move
@@ -138,9 +142,37 @@ class GamesController < ApplicationController
     @game = Game.new(game_params)
     handle = BoardHandle.new
     handle.new_board
+    bot = User.where(:bot => true).first
     @game.board = handle.compress_board
-    @game.start_time = Time.now
-    @game.winner = current_user
+    no_players = params[:user][:no_players].to_i    
+    color = params[:user][:color] 
+    if no_players == 1   
+      @game.start_time = Time.now
+      if color == "white"
+        @game.winner = current_user
+        @game.loser = bot
+      elsif color == "black"
+        @game.winner = bot
+        @game.loser = current_user
+        puts 'White is gonna play'
+        board = handle.decompress_board(eval @game.board)
+        # board = @game.board
+        opp_color = "white"
+        king = handle.get_king(opp_color)
+        opp = Player.new(opp_color,board,handle.get_pieces(opp_color), king, nil, $Old_boards)
+        change = opp.play
+        @game.board = opp.compress_board
+      end
+    else
+      if color == "white"
+        @game.winner = current_user
+        @game.loser = nil
+      elsif color == "black"
+        @game.winner = nil
+        @game.loser = current_user
+      end
+    end
+    puts color
     @game.save
     redirect_to play_path(@game)
     # respond_to do |format|
@@ -186,6 +218,6 @@ class GamesController < ApplicationController
 
     # Never trust parameters from the scary internet, only allow the white list through.
     def game_params
-      params.require(:game).permit(:winner_id, :loser_id, :start_time, :end_time, :board)
+      params.require(:game).permit(:winner_id, :loser_id, :start_time, :end_time, :board, :no_players)
     end
 end

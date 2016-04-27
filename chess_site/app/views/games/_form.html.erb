@@ -7,6 +7,25 @@
     <%# f.input :start_time %>
     <%# f.input :end_time %>
     <%= f.input :board, as: :hidden %>
+    <label for="user_no_players">No of Players</label><br>
+    <input name="user[no_players]" value="1" class="f1orm-control" id="user_no_players" type="radio" checked>1
+    <input name="user[no_players]" value="2" class="f1orm-control" id="user_no_players" type="radio">2
+    <br><br>
+    <label for="user_color">Color</label><br>
+    <div class="col-md-6">
+      <div style="margin:auto;width:200px;height:250px">
+        <div style="display:inline-block;position:relative;top:100px;">
+          <label for="user_color_white" style="font-weight:normal"><span class="big-piece">&#9812;</span><br><div class="text-center">White<br></div></label><div class="text-center"><input name="user[color]" value="white" class="f1orm-control hidden" id="user_color_white" type="radio" checked></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div style="margin:auto;width:200px;height:250px">
+        <div style="display:inline-block;position:relative;top:100px;">
+          <label for="user_color_black" style="font-weight:normal"><span class="big-piece">&#9818;</span><br><div class="text-center">Black<br></div></label><div class="text-center"><input name="user[color]" value="black" class="f1orm-control hidden" id="user_color_black" type="radio"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="form-actions">
