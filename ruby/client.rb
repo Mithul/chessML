@@ -36,7 +36,49 @@ class NN
 
 	def learn(statistics)
 		status = @LEARN
-		self.send(statistics, status)
+		boards = self.format_board statistics.first
+		puts '+'*100 ,boards.to_s
+		self.send([boards], status)
+	end
+
+	#Board dimensions color, class, x, y
+	def format_board old_board
+		board = []
+		positions = old_board[:board]
+		puts positions.to_s
+		(0..5).each do |piece|
+			(0..1).each do |color|
+				(0..7).each do |x|
+					(0..7).each do |y|
+						board[6*8*8*color + 8*8*piece + 8*x+y] = 0
+					end
+				end
+			end
+		end
+		positions.each_with_index do |tile,i|
+			if tile != '-'
+				parts = tile.split('_')
+				color = 0 if parts[0]=='W'
+				color = 1 if parts[0]=='B'
+				x = i/8
+				y = i%8
+				if parts[1] == 'H'
+					piece = 0
+				elsif parts[1] == 'P'
+					piece = 1
+				elsif parts[1] == 'K'
+					piece = 2
+				elsif parts[1] == 'Q'
+					piece = 3
+				elsif parts[1] == 'R'
+					piece = 4
+				elsif parts[1] == 'B'
+					piece = 5
+				end
+				board[6*8*8*color + 8*8*piece + 8*x+y] = 1
+			end
+		end
+		return board
 	end
 
 	def quit()
