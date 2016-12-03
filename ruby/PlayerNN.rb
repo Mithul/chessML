@@ -1,11 +1,11 @@
-class Player
-	def initialize color, board, pieces, king, gui = nil, old_boards = []
+class PlayerNN
+	def initialize color, board, pieces, king, gui = nil, nn = nil
 		@color = color
 		@board = board
 		@pieces = pieces
 		@gui = gui 
-		@old_boards = old_boards
 		@king = king
+		@nn = nn
 		@boards = []
 		# @cmove = 0
 	end
@@ -25,7 +25,6 @@ class Player
 		pieces = @pieces
 		board = @board
 		gui = @gui
-		old_boards = @old_boards
 		boards = @boards
 		# cmove = @cmove
 		moves = []
@@ -66,7 +65,6 @@ class Player
 		# puts 'o '+old_boards.first.to_s
 		# cboard = old_boards.first.dup
 		# index = old_boards.index(cboard.join)
-		indeces = old_boards.each_index.select{|i| old_boards[i] == cboard.join}
 		# puts indeces.to_s
 
 
@@ -84,20 +82,14 @@ class Player
 
 		max = 0
 		best_index = nil
-		indeces.each do |index|
-			if @old_boards[index][@color] > max
-				max = @old_boards[index][@color]
-				best_index = index
-			end
-		end
-
+		
+		best_index = @nn.get_move(current_board)
+		#must return string of format "[1,1]:[2,2]:val"
 		if best_index
 			# puts 'f '+old_boards[index].to_s
 			# puts 'f '+@old_boards[index].to_s
 
-
-			best_board = @old_boards[best_index]
-			suggested_move = best_board[:move]
+			suggested_move = best_index
 
 			from = eval suggested_move.split(':')[0]
 			to = eval suggested_move.split(':')[1]
@@ -107,7 +99,7 @@ class Player
 			piece_index = pieces.index(piece)
 			if piece_index
 				# puts piece_index
-				to[2] = best_board[current_turn_color]
+				to[2] = suggested_move.split(':')[2].to_i
 				moves[piece_index] << to
 				p = picker moves[piece_index] 
 				piece_type_prob[piece_index] = [piece_index,p[0],p[1]]
@@ -146,31 +138,13 @@ class Player
 			# @mutex.synchronize do
 			# @old_boards = read_file @file
 			# puts @old_boards.to_s
+
 			boards.each do |board|
 				cboard = compress_board board[:board]
-				index = @old_boards.index(cboard.join)
-				indeces = []
-				@old_boards.each_index do |i| 
-					if @old_boards[i][:board] == cboard and @old_boards[i][:move] == board[:move]
-						indeces << i
-						break
-					end
-				end
-
-				if indeces[0]
-					index = indeces[0]
-					@old_boards[index][winner] = @old_boards[index][winner] + 10
-					@old_boards[index][loser] = @old_boards[index][loser] - 5
-					# puts ({board: cboard, winner => 10, loser => 5,move: board[:move]}).to_s
-					# puts @old_boards[index]
-					# exit
-				else
-					statistics << {board: cboard, winner => 10, loser => 5,move: board[:move]}
-				end
+				statistics << {board: cboard, winner => 10, loser => 5,move: board[:move]}
 			end
-			statistics = @old_boards + statistics
-			@old_boards = statistics
 
+			@nn.learn(statistics)			
 			# end
 
 			# puts 'Win'

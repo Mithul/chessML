@@ -3,30 +3,58 @@ require 'json'
 
 streamSock = TCPSocket.new( "127.0.0.1", 5555 )
 
-def recv(socket)
-	str = socket.recv(1024)
-	msg = str.split(':')[0]
-	length = msg[0..4]
-	msg = msg[4..(4+length.to_i)]
-	return JSON.parse(msg)
+class NN
+	def initialize(socket)
+		@socket = socket
+		@LEARN = 1
+		@EXIT = 0
+	end
+
+	def recv
+		str = @socket.recv(8)
+		length = str.to_i
+		str = @socket.recv(length)
+		msg = str
+		return JSON.parse(msg)
+	end
+
+	def send(msg, status)
+		msg = {'status' => status, "data" => msg}
+		msg = JSON.dump(msg)
+		length = msg.to_s.length
+		puts '#'*100,length
+		msg = length.to_s.rjust(8, "0") + msg
+		str = @socket.write(msg)
+	end
+
+	def get_move(current_board)
+		from = [1,1]
+		to = [2,2]
+		score = 5
+		return from.to_s + ':' + to.to_s + ':' + score.to_s
+	end
+
+	def learn(statistics)
+		status = @LEARN
+		self.send(statistics, status)
+	end
+
+	def quit()
+		self.send(nil, @EXIT)
+	end
 end
 
-def send(socket, msg)
-	length = msg.length
-	msg = JSON.dump(msg)
-	msg = length.to_s.rjust(4, "0") + msg + ':'
-	str = socket.write(msg)
-end
+@nn = NN.new streamSock
 
-while true
-	puts recv(streamSock).to_s
-	msg = [4,5,6]
-	send(streamSock, msg)
-	sleep 1
-end
-streamSock.close  
+# while true
+# 	puts @nn.recv().to_s
+# 	msg = [4,5,6]
+# 	@nn.send(msg, status)
+# 	sleep 1
+# end
+# streamSock.close  
 
-
+# exit
 
 require_relative 'Horse'
 require_relative 'Gui'
@@ -35,7 +63,7 @@ require_relative 'King'
 require_relative 'Bishop'
 require_relative 'Queen'
 require_relative 'Rook'
-require_relative 'Player'
+require_relative 'PlayerNN'
 require_relative 'tile'
 require_relative 'utils/probability_picker'
 
@@ -202,8 +230,8 @@ def run
 	gui = @guis.select{|g| !g.used}[0]
 	gui.used = true if gui
 
-	white_player = Player.new('white',board,white_pieces, white_king, gui, @old_boards)
-	black_player = Player.new('black',board,black_pieces, black_king, gui, @old_boards)
+	white_player = PlayerNN.new('white',board,white_pieces, white_king, gui, @nn)
+	black_player = PlayerNN.new('black',board,black_pieces, black_king, gui, @nn)
 
 	500.times do |turn|
 		puts 'turn '+turn.to_s
@@ -234,41 +262,39 @@ end
 @old_boards = []
 
 @guis = []
+threads = 1
+iterations=2
+# begin
+# 	require 'thread'
+# 	work_q = Queue.new
+# 	(0..iterations).to_a.each{|x| work_q.push x }
+# 	workers = (0...threads).map do
+# 		gui = Gui.new
+# 		@guis << gui
+# 	  Thread.new do
+# 	    begin
+# 	    	while x = work_q.pop(true)
+# 		        run
+# 			end
+# 	    rescue ThreadError
+# 	    end
+# 	  end
+# 	end; "ok"
+# workers.map(&:join); "ok"
+# rescue SystemExit, Interrupt
+#   puts 'Error'
+#   raise
+# rescue StandardError
+#   puts 'Error'
+#   raise
+# rescue Exception => e
+# 	puts e
+# 	puts e.backtrace
+# ensure
+# 	# if iter%5 == 0 and iter !=0
+# 	puts "Done"
+# 	# end
+# end
+run
 
-begin
-	require 'thread'
-	work_q = Queue.new
-	(0..iterations).to_a.each{|x| work_q.push x }
-	workers = (0...threads).map do
-		gui = Gui.new
-		@guis << gui
-	  Thread.new do
-	    begin
-	    	while x = work_q.pop(true)
-		        run
-			end
-	    rescue ThreadError
-	    end
-	  end
-	end; "ok"
-workers.map(&:join); "ok"
-rescue SystemExit, Interrupt
-  puts 'Error'
-  raise
-rescue StandardError
-  puts 'Error'
-  raise
-rescue Exception => e
-	puts e
-	puts e.backtrace
-ensure
-	# if iter%5 == 0 and iter !=0
-	puts "Writing"
-	f = File.open(@file,"w")
-	require 'zlib'
-	f.write Zlib::Deflate.deflate(@old_boards.to_s)
-	f.close
-	puts "Done"
-	# end
-end
-
+@nn.quit
