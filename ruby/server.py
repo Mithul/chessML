@@ -2,6 +2,7 @@ import socket
 import json
 import time
 import tensorflow as tf
+import numpy as np
 serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -74,6 +75,12 @@ bot = Bot('first')
 bot.setup_nn()
 init = tf.initialize_all_variables()
 sess.run(init)
+saver = tf.train.Saver()
+ckpt = tf.train.get_checkpoint_state('models/')
+if ckpt and ckpt.model_checkpoint_path:
+	print("Checkpoint Found ")
+	saver.restore(sess, ckpt.model_checkpoint_path)
+
 
 while 1:
 	#accept connections from outside
@@ -83,10 +90,24 @@ while 1:
 	while 1:
 		# print send([1,2,3],clientsocket)
 		x = recv(clientsocket)
-		print x
+		# print x
 		if x['status'] == LEARN:
-			z = sess.run(bot.nnet["output_pred"], {bot.input_nn: x["data"]})
+			inputs = []
+			outputs = []
+			for stat in x["data"]:
+				inputs.append(stat["board"])
+				op_arr = np.zeros([64*64])-0.1
+				fr = eval(stat["move"].split(':')[0])
+				to = eval(stat["move"].split(':')[1])
+				score_w = int(stat["white"])
+				score_b = int(stat["black"])
+				op_arr[fr*64+to] = score_w
+				outputs.append(op_arr)
+			# print outputs
+			# z = sess.run(bot.nnet["output_pred"], {bot.input_nn: inputs})
+			z = sess.run([bot.train_step, bot.final], {bot.input_nn: inputs, bot.score: outputs})
 			print z
-			exit()
 		if x['status'] == EXIT:
+			saver.save(sess, 'models/' + 'model.ckpt',
+                           global_step=1)
 			exit()

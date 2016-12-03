@@ -36,16 +36,17 @@ class NN
 
 	def learn(statistics)
 		status = @LEARN
-		boards = self.format_board statistics.first
-		puts '+'*100 ,boards.to_s
-		self.send([boards], status)
+		boards = []
+		statistics.each do |statistic|
+			boards << self.format_board(statistic)
+		end
+		self.send(boards, status)
 	end
 
 	#Board dimensions color, class, x, y
 	def format_board old_board
 		board = []
 		positions = old_board[:board]
-		puts positions.to_s
 		(0..5).each do |piece|
 			(0..1).each do |color|
 				(0..7).each do |x|
@@ -78,7 +79,8 @@ class NN
 				board[6*8*8*color + 8*8*piece + 8*x+y] = 1
 			end
 		end
-		return board
+		old_board[:board] = board
+		return old_board
 	end
 
 	def quit()
@@ -194,7 +196,7 @@ end
 def run
 	boards = []
 	cmove=0
-	old_boards = @old_boards.map{|o| o[:board].join}
+	old_boards = []
 
 	if @count==1
 		# exit
@@ -305,38 +307,38 @@ end
 
 @guis = []
 threads = 1
-iterations=2
-# begin
-# 	require 'thread'
-# 	work_q = Queue.new
-# 	(0..iterations).to_a.each{|x| work_q.push x }
-# 	workers = (0...threads).map do
-# 		gui = Gui.new
-# 		@guis << gui
-# 	  Thread.new do
-# 	    begin
-# 	    	while x = work_q.pop(true)
-# 		        run
-# 			end
-# 	    rescue ThreadError
-# 	    end
-# 	  end
-# 	end; "ok"
-# workers.map(&:join); "ok"
-# rescue SystemExit, Interrupt
-#   puts 'Error'
-#   raise
-# rescue StandardError
-#   puts 'Error'
-#   raise
-# rescue Exception => e
-# 	puts e
-# 	puts e.backtrace
-# ensure
-# 	# if iter%5 == 0 and iter !=0
-# 	puts "Done"
-# 	# end
-# end
-run
+iterations=200
+begin
+	require 'thread'
+	work_q = Queue.new
+	(0..iterations).to_a.each{|x| work_q.push x }
+	workers = (0...threads).map do
+		gui = Gui.new
+		@guis << gui
+	  Thread.new do
+	    begin
+	    	while x = work_q.pop(true)
+		        run
+			end
+	    rescue ThreadError
+	    end
+	  end
+	end; "ok"
+workers.map(&:join); "ok"
+rescue SystemExit, Interrupt
+  puts 'Error'
+  raise
+rescue StandardError
+  puts 'Error'
+  raise
+rescue Exception => e
+	puts e
+	puts e.backtrace
+ensure
+	# if iter%5 == 0 and iter !=0
+	puts "Done"
+	# end
+end
+# run
 
 @nn.quit
