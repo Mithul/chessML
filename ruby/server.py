@@ -11,6 +11,8 @@ serversocket.listen(0)
 
 EXIT=0
 LEARN=1
+ACK=2
+ERROR=-1
 
 def send(msg, status, socket):
 	x=json.dumps(msg)
@@ -19,11 +21,19 @@ def send(msg, status, socket):
 	return True
 
 def recv(socket):
-	msg = socket.recv(8)
-	length = int(msg)
-	msg = socket.recv(length)
-	msg = json.loads(msg)
-	# msg = msg.split[0]
+	msg = {'status': ERROR }
+	try:
+		msg = socket.recv(8)
+		length = int(msg)
+		msg = socket.recv(length)
+		msg = json.loads(msg)
+		# print "sending"
+		# send([],ACK, socket)
+	except:
+		msg = {'status': ERROR }
+		# print "sendinge"
+		# send([],ERROR, socket)
+		# msg = msg.split[0]
 	return msg
 
 class Bot:
@@ -31,21 +41,21 @@ class Bot:
 		self.name = name
 	def setup_nn(self):
 		input_size = 8*8*6*2
-		layers = [512, 512]
+		layers = [2048]*5
 		output_size = (8*8)**2
 		self.nnet = {}
 		with tf.variable_scope('bot_'+self.name):
 			input = tf.placeholder(tf.float32, shape=[None,input_size], name="input")
 			self.nnet['input'] = input
-			score = tf.placeholder(tf.float32,shape=[None,output_size], name="score")
+			score = tf.placeholder(tf.float32,shape=[None, output_size], name="score")
 			self.nnet['score'] = score
 			prev_input = input
 			for i, size in enumerate(layers):
-				w = tf.Variable(tf.random_uniform([input_size,size]), name="hidden_w_"+str(i))
+				w = tf.Variable(tf.random_normal([input_size,size]), name="hidden_w_"+str(i))
 				self.nnet["hidden_w_"+str(i)] = w
-				b = tf.Variable(tf.random_uniform([size]), name="hidden_b_"+str(i))
+				b = tf.Variable(tf.random_normal([size]), name="hidden_b_"+str(i))
 				self.nnet["hidden_b_"+str(i)] = b
-				output = tf.sigmoid(tf.matmul(prev_input,w)+b)
+				output = tf.nn.dropout(tf.tanh(tf.matmul(prev_input,w)+b), 0.5)
 				self.nnet["output_"+str(i)] = output
 				prev_input = output
 				input_size = size
@@ -57,7 +67,9 @@ class Bot:
 			pred = tf.nn.softmax(tf.matmul(output,ws)+bs)
 			self.nnet["output_pred"] = pred
 			optimizer = tf.train.AdagradOptimizer(0.1)
-
+			# print output.get_shape(), score.get_shape()
+			# cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(tf.maximum(output,output + 1e-10), score, name='xentropy')
+			# loss_m = tf.reduce_mean(cross_entropy, name='xentropy_mean')
 			loss_m = tf.reduce_mean(-tf.reduce_sum(score * tf.log(tf.maximum(pred,pred + 1e-10)), reduction_indices=[1]))
 			train_step = optimizer.minimize(loss_m)
 
@@ -96,18 +108,31 @@ while 1:
 			outputs = []
 			for stat in x["data"]:
 				inputs.append(stat["board"])
-				op_arr = np.zeros([64*64])-0.1
+				op_arr = np.zeros([64*64])
 				fr = eval(stat["move"].split(':')[0])
 				to = eval(stat["move"].split(':')[1])
+				fr[0]=fr[0]-1
+				fr[1]=fr[1]-1
+				to[0]=to[0]-1
+				to[1]=to[1]-1
 				score_w = int(stat["white"])
 				score_b = int(stat["black"])
-				op_arr[fr*64+to] = score_w
+				# print fr[0]*8*8*8 + fr[1]*8*8 +to[0]*8 + to[1]
+				op_arr[fr[0]*8*8*8 + fr[1]*8*8 +to[0]*8 + to[1]] = 1
+				print fr[0]*8*8*8 + fr[1]*8*8 +to[0]*8 + to[1]
 				outputs.append(op_arr)
+				# _,z, h = sess.run([bot.train_step, bot.final, bot.nnet["output_0"]], {bot.input_nn: [stat["board"]], bot.score: [op_arr]})
+				# print z, z.shape, z[0].shape
+				# print h
+				# print np.argmax(z[-1]),z[-1][np.argmax(z[-1])]
 			# print outputs
 			# z = sess.run(bot.nnet["output_pred"], {bot.input_nn: inputs})
-			z = sess.run([bot.train_step, bot.final], {bot.input_nn: inputs, bot.score: outputs})
-			print z
+			_,z, loss, h0,h3,h5 = sess.run([bot.train_step, bot.final, bot.loss, bot.nnet["output_0"], bot.nnet["output_2"], bot.nnet["output_4"]], {bot.input_nn: inputs, bot.score: outputs})
+			print 'final ',z, z.shape, z[0].shape
+			print 'loss ',loss
+			print 'hidden ',h0,h3,h5
+			print 'top ',np.argmax(z[-1]),np.argpartition(z[-1],-5)[-5:],z[-1][np.argpartition(z[-1],-5)[-5:]]
+			print 'top ',np.argmax(z[-2]),np.argpartition(z[-2],-5)[-5:],z[-2][np.argpartition(z[-2],-5)[-5:]]
 		if x['status'] == EXIT:
-			saver.save(sess, 'models/' + 'model.ckpt',
-                           global_step=1)
+			saver.save(sess, 'models/' + 'model.ckpt', global_step=1)
 			exit()

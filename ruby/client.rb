@@ -1,5 +1,6 @@
 require 'socket'
 require 'json'
+require 'thread'
 
 streamSock = TCPSocket.new( "127.0.0.1", 5555 )
 
@@ -8,6 +9,11 @@ class NN
 		@socket = socket
 		@LEARN = 1
 		@EXIT = 0
+		@ERROR = 0
+		@EXIT = 0
+		@mutex = Mutex.new
+		@queue = Queue.new
+		@thread = Thread.new{|t| sender}
 	end
 
 	def recv
@@ -15,16 +21,36 @@ class NN
 		length = str.to_i
 		str = @socket.recv(length)
 		msg = str
+		# print
 		return JSON.parse(msg)
 	end
 
 	def send(msg, status)
-		msg = {'status' => status, "data" => msg}
-		msg = JSON.dump(msg)
-		length = msg.to_s.length
-		puts '#'*100,length
-		msg = length.to_s.rjust(8, "0") + msg
-		str = @socket.write(msg)
+		@queue << {'status' => status, "data" => msg}
+	end
+
+	def sender
+		while msg = @queue.pop
+			if msg['status'] != @EXIT
+				msg2 = @queue.pop
+				if msg2['status'] != @EXIT
+					msg = {'status' => msg['status'], "data" => (msg["data"]+msg2["data"])}
+				else
+					msg = msg2
+				end
+			end
+			msg = JSON.dump(msg)
+			length = msg.to_s.length
+			puts '#'*100,length
+			msg = length.to_s.rjust(8, "0") + msg
+			# @msg = msg if !@msg
+			@socket.write(msg)
+			# if self.recv['status'] == @ACK
+			# 	next
+			# elsif self.recv['status'] == @ERROR
+			# end
+			sleep 0.8
+		end
 	end
 
 	def get_move(current_board)
@@ -85,6 +111,7 @@ class NN
 
 	def quit()
 		self.send(nil, @EXIT)
+		@thread.join
 	end
 end
 
@@ -306,8 +333,8 @@ end
 @old_boards = []
 
 @guis = []
-threads = 1
-iterations=200
+threads = 8
+iterations=2000
 begin
 	require 'thread'
 	work_q = Queue.new
