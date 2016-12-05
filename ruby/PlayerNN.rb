@@ -1,5 +1,5 @@
 class PlayerNN
-	def initialize color, board, pieces, king, gui = nil, nn = nil
+	def initialize color, board, pieces, king, gui = nil, nn = nil, id=1
 		@color = color
 		@board = board
 		@pieces = pieces
@@ -8,6 +8,7 @@ class PlayerNN
 		@nn = nn
 		@boards = []
 		@verbose = false
+		@id = @color + id.to_s
 		# @cmove = 0
 	end
 
@@ -84,7 +85,7 @@ class PlayerNN
 		max = 0
 		best_index = nil
 		
-		best_index = @nn.get_move(current_board)
+		best_index = @nn.get_move(current_board, @id)
 		#must return string of format "[1,1]:[2,2]:val"
 		if best_index
 			# puts 'f '+old_boards[index].to_s if @verbose
@@ -97,6 +98,9 @@ class PlayerNN
 			# puts from.to_s if @verbose
 			# puts to.to_s if @verbose
 			piece = board[from[0]][from[1]].piece
+			puts "NN o/p : No piece " if !piece
+			puts "NN o/p : Move invalid " if piece and !piece.check_possible_moves.map{|m| [m[0],m[1]]}.include?(to)
+			puts "NN o/p : Valid move " if piece and piece.check_possible_moves.map{|m| [m[0],m[1]]}.include?(to)
 			piece_index = pieces.index(piece)
 			if piece_index
 				# puts piece_index if @verbose

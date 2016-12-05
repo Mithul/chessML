@@ -7,12 +7,15 @@ streamSock = TCPSocket.new( "127.0.0.1", 5555 )
 class NN
 	def initialize(socket)
 		@socket = socket
-		@LEARN = 1
-		@EXIT = 0
-		@ERROR = 0
-		@EXIT = 0
+		@EXIT=0
+		@LEARN=1
+		@ACK=2
+		@PRED=3
+		@RESULT=4
+		@ERROR=-1
 		@mutex = Mutex.new
 		@queue = Queue.new
+		@result_queue = Queue.new
 		@thread = Thread.new{|t| sender}
 	end
 
@@ -25,35 +28,55 @@ class NN
 		return JSON.parse(msg)
 	end
 
-	def send(msg, status)
-		@queue << {'status' => status, "data" => msg}
+	def send(msg, status, extra=nil)
+		@queue << {'status' => status, "data" => msg, "extra"=>extra}
 	end
 
 	def sender
 		while msg = @queue.pop
-			if msg['status'] != @EXIT
-				msg2 = @queue.pop
-				if msg2['status'] != @EXIT
-					msg = {'status' => msg['status'], "data" => (msg["data"]+msg2["data"])}
-				else
-					msg = msg2
+			if msg['status'] != @PRED
+				# if msg['status'] != @EXIT
+				# 	msg2 = @queue.pop
+				# 	if msg2['status'] != @EXIT
+				# 		msg = {'status' => msg['status'], "data" => (msg["data"]+msg2["data"])}
+				# 	else
+				# 		msg = msg2
+				# 	end
+				# end
+				msg = JSON.dump(msg)
+				length = msg.to_s.length
+				puts '#'*100,length
+				msg = length.to_s.rjust(8, "0") + msg
+				# @msg = msg if !@msg
+				@socket.write(msg)
+				# if self.recv['status'] == @ACK
+				# 	next
+				# elsif self.recv['status'] == @ERROR
+				# end
+				sleep 0.8
+			else
+				msg = JSON.dump(msg)
+				length = msg.to_s.length
+				# puts '#'*100,length
+				msg = length.to_s.rjust(8, "0") + msg
+				@socket.write(msg)
+				x = self.recv
+				if x["status"] == @RESULT
+					@result_queue.push x
 				end
 			end
-			msg = JSON.dump(msg)
-			length = msg.to_s.length
-			puts '#'*100,length
-			msg = length.to_s.rjust(8, "0") + msg
-			# @msg = msg if !@msg
-			@socket.write(msg)
-			# if self.recv['status'] == @ACK
-			# 	next
-			# elsif self.recv['status'] == @ERROR
-			# end
-			sleep 0.8
 		end
 	end
 
-	def get_move(current_board)
+	def get_move(current_board, id=1)
+		# puts current_board.keys
+		board = format_board({board: compress_board(current_board[:board])})
+		self.send(board, @PRED, {id: id})
+		x = @result_queue.pop
+		while x["extra"]["id"]!=id
+			x = @result_queue.pop
+			@result_queue.push x
+		end
 		from = [1,1]
 		to = [2,2]
 		score = 5
@@ -220,7 +243,7 @@ def decompress_board cboard
 end
 
 
-def run
+def run id=1
 	boards = []
 	cmove=0
 	old_boards = []
@@ -301,11 +324,11 @@ def run
 	gui = @guis.select{|g| !g.used}[0]
 	gui.used = true if gui
 
-	white_player = PlayerNN.new('white',board,white_pieces, white_king, gui, @nn)
-	black_player = PlayerNN.new('black',board,black_pieces, black_king, gui, @nn)
+	white_player = PlayerNN.new('white',board,white_pieces, white_king, gui, @nn, id)
+	black_player = PlayerNN.new('black',board,black_pieces, black_king, gui, @nn, id)
 
 	500.times do |turn|
-		puts 'turn '+turn.to_s
+		# puts 'turn '+turn.to_s
 		if turn%2==0
 			current_turn_color = "white"
 			pieces = white_pieces
@@ -339,13 +362,16 @@ begin
 	require 'thread'
 	work_q = Queue.new
 	(0..iterations).to_a.each{|x| work_q.push x }
-	workers = (0...threads).map do
+	workers = (0...threads).map do |id|
 		gui = Gui.new
 		@guis << gui
 	  Thread.new do
 	    begin
+	    	i = 0
 	    	while x = work_q.pop(true)
-		        run
+		        run id
+		        i = i+ 1
+		        puts "Game : #{i}"
 			end
 	    rescue ThreadError
 	    end
@@ -366,6 +392,6 @@ ensure
 	puts "Done"
 	# end
 end
-# run
+# run 1
 
 @nn.quit

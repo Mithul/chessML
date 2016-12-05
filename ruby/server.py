@@ -12,9 +12,12 @@ serversocket.listen(0)
 EXIT=0
 LEARN=1
 ACK=2
+PRED=3
+RESULT=4
 ERROR=-1
 
-def send(msg, status, socket):
+def send(msg, status, socket, extra=None):
+	msg = {"status": status, "data": msg, "extra": extra}
 	x=json.dumps(msg)
 	x = str(len(x)).zfill(8) + x
 	socket.send(x)
@@ -41,7 +44,7 @@ class Bot:
 		self.name = name
 	def setup_nn(self):
 		input_size = 8*8*6*2
-		layers = [2048]*5
+		layers = [2048]*2
 		output_size = (8*8)**2
 		self.nnet = {}
 		with tf.variable_scope('bot_'+self.name):
@@ -99,11 +102,17 @@ while 1:
 	(clientsocket, address) = serversocket.accept()
 	#now do something with the clientsocket
 	#in this case, we'll pretend this is a threaded server
+	step = 0
 	while 1:
 		# print send([1,2,3],clientsocket)
 		x = recv(clientsocket)
 		# print x
-		if x['status'] == LEARN:
+		if x['status'] == PRED:
+			inputs = x["data"]["board"]
+			print x
+			z = sess.run(bot.final, {bot.input_nn: [inputs]})
+			send({"move":np.argmax(z[-1]), "score":100*int(z[-1][np.argmax(z[-1])])},RESULT, clientsocket, extra=x["extra"])
+		elif x['status'] == LEARN:
 			inputs = []
 			outputs = []
 			for stat in x["data"]:
@@ -127,7 +136,11 @@ while 1:
 				# print np.argmax(z[-1]),z[-1][np.argmax(z[-1])]
 			# print outputs
 			# z = sess.run(bot.nnet["output_pred"], {bot.input_nn: inputs})
-			_,z, loss, h0,h3,h5 = sess.run([bot.train_step, bot.final, bot.loss, bot.nnet["output_0"], bot.nnet["output_2"], bot.nnet["output_4"]], {bot.input_nn: inputs, bot.score: outputs})
+			step = step + 1
+			if step%1000==0:
+				print "Saving model"
+				saver.save(sess, 'models/' + 'model.ckpt', global_step=1)
+			_,z, loss, h0,h3,h5 = sess.run([bot.train_step, bot.final, bot.loss, bot.nnet["output_0"], bot.nnet["output_1"], bot.nnet["output_0"]], {bot.input_nn: inputs, bot.score: outputs})
 			print 'final ',z, z.shape, z[0].shape
 			print 'loss ',loss
 			print 'hidden ',h0,h3,h5
