@@ -44,7 +44,7 @@ class Bot:
 		self.name = name
 	def setup_nn(self):
 		input_size = 8*8*6*2
-		layers = [2048]*2
+		layers = [256]*5
 		output_size = (8*8)**2
 		self.nnet = {}
 		with tf.variable_scope('bot_'+self.name):
@@ -58,7 +58,7 @@ class Bot:
 				self.nnet["hidden_w_"+str(i)] = w
 				b = tf.Variable(tf.random_normal([size]), name="hidden_b_"+str(i))
 				self.nnet["hidden_b_"+str(i)] = b
-				output = tf.nn.dropout(tf.tanh(tf.matmul(prev_input,w)+b), 0.5)
+				output = tf.nn.dropout(tf.nn.relu6(tf.matmul(prev_input,w)+b), 0.2)
 				self.nnet["output_"+str(i)] = output
 				prev_input = output
 				input_size = size
@@ -67,15 +67,23 @@ class Bot:
 			self.nnet["hidden_ws"] = ws
 			bs = tf.Variable(tf.zeros([output_size]))
 			self.nnet["hidden_bs"] = bs
-			pred = tf.nn.softmax(tf.matmul(output,ws)+bs)
-			self.nnet["output_pred"] = pred
-			optimizer = tf.train.AdagradOptimizer(0.1)
+			# pred = tf.nn.softmax(tf.matmul(output,ws)+bs)
+			optimizer = tf.train.AdagradOptimizer(0.001)
+			loss_m = []
+			train_step = []
+			op = None
 			# print output.get_shape(), score.get_shape()
 			# cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(tf.maximum(output,output + 1e-10), score, name='xentropy')
 			# loss_m = tf.reduce_mean(cross_entropy, name='xentropy_mean')
-			loss_m = tf.reduce_mean(-tf.reduce_sum(score * tf.log(tf.maximum(pred,pred + 1e-10)), reduction_indices=[1]))
-			train_step = optimizer.minimize(loss_m)
+			# loss_m = tf.reduce_mean(-tf.reduce_sum(score * tf.log(tf.maximum(pred,pred + 1e-10)), reduction_indices=[1]))
+			# train_step = optimizer.minimize(loss_m)
+			for i, size in enumerate(layers):
+				op = tf.nn.softmax(tf.matmul(self.nnet["output_"+str(i)],ws)+bs)
+				loss_m.append(tf.reduce_mean(-tf.reduce_sum(score * tf.log(tf.maximum(op,op + 1e-10)), reduction_indices=[1])))
+				train_step.append(optimizer.minimize(loss_m[-1]))
 
+			pred = op
+			self.nnet["output_pred"] = pred
 			self.op1 = output
 			self.thrusters = pred
 			self.train_step = train_step
@@ -96,7 +104,8 @@ if ckpt and ckpt.model_checkpoint_path:
 	print("Checkpoint Found ")
 	saver.restore(sess, ckpt.model_checkpoint_path)
 
-
+glob_inp = []
+glob_op = []
 while 1:
 	#accept connections from outside
 	(clientsocket, address) = serversocket.accept()
@@ -111,12 +120,13 @@ while 1:
 			inputs = x["data"]["board"]
 			print x
 			z = sess.run(bot.final, {bot.input_nn: [inputs]})
-			send({"move":np.argmax(z[-1]), "score":100*int(z[-1][np.argmax(z[-1])])},RESULT, clientsocket, extra=x["extra"])
+			send({"move":np.argmax(z[-1]), "score":int(10*z[-1][np.argmax(z[-1])])},RESULT, clientsocket, extra=x["extra"])
 		elif x['status'] == LEARN:
 			inputs = []
 			outputs = []
 			for stat in x["data"]:
 				inputs.append(stat["board"])
+				glob_inp.append(stat["board"])
 				op_arr = np.zeros([64*64])
 				fr = eval(stat["move"].split(':')[0])
 				to = eval(stat["move"].split(':')[1])
@@ -130,6 +140,7 @@ while 1:
 				op_arr[fr[0]*8*8*8 + fr[1]*8*8 +to[0]*8 + to[1]] = 1
 				print fr[0]*8*8*8 + fr[1]*8*8 +to[0]*8 + to[1]
 				outputs.append(op_arr)
+				glob_op.append(op_arr)
 				# _,z, h = sess.run([bot.train_step, bot.final, bot.nnet["output_0"]], {bot.input_nn: [stat["board"]], bot.score: [op_arr]})
 				# print z, z.shape, z[0].shape
 				# print h
@@ -140,12 +151,15 @@ while 1:
 			if step%1000==0:
 				print "Saving model"
 				saver.save(sess, 'models/' + 'model.ckpt', global_step=1)
-			_,z, loss, h0,h3,h5 = sess.run([bot.train_step, bot.final, bot.loss, bot.nnet["output_0"], bot.nnet["output_1"], bot.nnet["output_0"]], {bot.input_nn: inputs, bot.score: outputs})
+				open('models/data','w').write(str([glob_op, glob_inp]))
+			[sess.run(bot.train_step[-1], {bot.input_nn: inputs, bot.score: outputs}) for i in range(1)]
+			loss= sess.run(bot.loss, {bot.input_nn: inputs, bot.score: outputs})
+			z, h0, h3, h5 = sess.run([bot.final, bot.nnet["output_0"], bot.nnet["output_1"], bot.nnet["output_0"]], {bot.input_nn: inputs, bot.score: outputs})
 			print 'final ',z, z.shape, z[0].shape
 			print 'loss ',loss
 			print 'hidden ',h0,h3,h5
 			print 'top ',np.argmax(z[-1]),np.argpartition(z[-1],-5)[-5:],z[-1][np.argpartition(z[-1],-5)[-5:]]
-			print 'top ',np.argmax(z[-2]),np.argpartition(z[-2],-5)[-5:],z[-2][np.argpartition(z[-2],-5)[-5:]]
+			# print 'top ',np.argmax(z[-2]),np.argpartition(z[-2],-5)[-5:],z[-2][np.argpartition(z[-2],-5)[-5:]]
 		if x['status'] == EXIT:
 			saver.save(sess, 'models/' + 'model.ckpt', global_step=1)
 			exit()

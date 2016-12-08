@@ -53,7 +53,7 @@ class NN
 				# 	next
 				# elsif self.recv['status'] == @ERROR
 				# end
-				sleep 0.8
+				sleep 0.05
 			else
 				msg = JSON.dump(msg)
 				length = msg.to_s.length
@@ -77,9 +77,12 @@ class NN
 			x = @result_queue.pop
 			@result_queue.push x
 		end
-		from = [1,1]
-		to = [2,2]
-		score = 5
+		move = x["data"]["move"]
+		score = x["data"]["score"]+1
+		move = move.to_s(8).rjust(4,"0").split('').map{|x| x.to_i+1}
+		puts x, move.to_s, score
+		from = [move[0],move[1]]
+		to = [move[2],move[3]]
 		return from.to_s + ':' + to.to_s + ':' + score.to_s
 	end
 
@@ -356,42 +359,45 @@ end
 @old_boards = []
 
 @guis = []
-threads = 8
-iterations=2000
-begin
-	require 'thread'
-	work_q = Queue.new
-	(0..iterations).to_a.each{|x| work_q.push x }
-	workers = (0...threads).map do |id|
-		gui = Gui.new
-		@guis << gui
-	  Thread.new do
-	    begin
-	    	i = 0
-	    	while x = work_q.pop(true)
-		        run id
-		        i = i+ 1
-		        puts "Game : #{i}"
-			end
-	    rescue ThreadError
-	    end
-	  end
-	end; "ok"
-workers.map(&:join); "ok"
-rescue SystemExit, Interrupt
-  puts 'Error'
-  raise
-rescue StandardError
-  puts 'Error'
-  raise
-rescue Exception => e
-	puts e
-	puts e.backtrace
-ensure
-	# if iter%5 == 0 and iter !=0
-	puts "Done"
-	# end
+threads = 1
+iterations=2000000
+if true
+	begin
+		require 'thread'
+		work_q = Queue.new
+		(0..iterations).to_a.each{|x| work_q.push x }
+		workers = (0...threads).map do |id|
+			gui = Gui.new
+			@guis << gui
+		  Thread.new do
+		    begin
+		    	i = 0
+		    	while x = work_q.pop(true)
+			        run id
+			        i = i+ 1
+			        puts "Game : #{i}"
+				end
+		    rescue ThreadError
+		    end
+		  end
+		end; "ok"
+	workers.map(&:join); "ok"
+	rescue SystemExit, Interrupt
+	  puts 'Error'
+	  raise
+	rescue StandardError
+	  puts 'Error'
+	  raise
+	rescue Exception => e
+		puts e
+		puts e.backtrace
+	ensure
+		# if iter%5 == 0 and iter !=0
+		puts "Done"
+		# end
+	end
+else
+	iterations.times{run 1}
 end
-# run 1
 
 @nn.quit

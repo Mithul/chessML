@@ -98,11 +98,13 @@ class PlayerNN
 			# puts from.to_s if @verbose
 			# puts to.to_s if @verbose
 			piece = board[from[0]][from[1]].piece
+			move_valid = piece and piece.check_possible_moves.map{|m| [m[0],m[1]]}.include?(to)
 			puts "NN o/p : No piece " if !piece
-			puts "NN o/p : Move invalid " if piece and !piece.check_possible_moves.map{|m| [m[0],m[1]]}.include?(to)
-			puts "NN o/p : Valid move " if piece and piece.check_possible_moves.map{|m| [m[0],m[1]]}.include?(to)
-			piece_index = pieces.index(piece)
-			if piece_index
+			puts "NN o/p : Move invalid " if piece and !move_valid
+			puts "NN o/p : Valid move " if move_valid
+			puts "NN o/p : Move invalid "+piece.check_possible_moves.map{|m| [m[0],m[1]]}.include?(to).to_s if piece
+			piece_index = pieces.index(piece) 
+			if piece_index and move_valid
 				# puts piece_index if @verbose
 				to[2] = suggested_move.split(':')[2].to_i
 				moves[piece_index] << to
@@ -118,7 +120,7 @@ class PlayerNN
 
 		p = picker piece_type_prob
 		move = moves[p[2][0]][p[2][1]]
-		# puts move.to_s if @verbose
+		puts 'Move made '+[pieces[p[2][0]].position?,move[0..1]].to_s# if @verbose
 		# puts p[2][0].to_s if @verbose
 		# puts pieces[p[2][0]].to_s if @verbose
 		move, change = make_move pieces[p[2][0]], move
