@@ -68,9 +68,11 @@ class Bot:
 			bs = tf.Variable(tf.zeros([output_size]))
 			self.nnet["hidden_bs"] = bs
 			# pred = tf.nn.softmax(tf.matmul(output,ws)+bs)
-			optimizer = tf.train.AdagradOptimizer(0.001)
 			loss_m = []
 			train_step = []
+			tvars = tf.trainable_variables()
+			optimizer = tf.train.GradientDescentOptimizer(0.01)
+			
 			op = None
 			# print output.get_shape(), score.get_shape()
 			# cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(tf.maximum(output,output + 1e-10), score, name='xentropy')
@@ -78,9 +80,14 @@ class Bot:
 			# loss_m = tf.reduce_mean(-tf.reduce_sum(score * tf.log(tf.maximum(pred,pred + 1e-10)), reduction_indices=[1]))
 			# train_step = optimizer.minimize(loss_m)
 			for i, size in enumerate(layers):
+				# loss_m.append(tf.reduce_mean(-tf.reduce_sum(score * tf.log(tf.maximum(op,op + 1e-10)), reduction_indices=[1])))
+				# train_step.append(optimizer.minimize(loss_m[-1]))
 				op = tf.nn.softmax(tf.matmul(self.nnet["output_"+str(i)],ws)+bs)
-				loss_m.append(tf.reduce_mean(-tf.reduce_sum(score * tf.log(tf.maximum(op,op + 1e-10)), reduction_indices=[1])))
-				train_step.append(optimizer.minimize(loss_m[-1]))
+				cost = tf.reduce_mean(-tf.reduce_sum(score * tf.log(tf.maximum(op,op + 1e-10)), reduction_indices=[1]))
+				loss_m.append(cost)
+				grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars), 5)
+				train_op = optimizer.apply_gradients(zip(grads, tvars),global_step=tf.contrib.framework.get_or_create_global_step())
+				train_step.append(train_op)
 
 			pred = op
 			self.nnet["output_pred"] = pred
@@ -159,10 +166,11 @@ while 1:
 				print "Saving model"
 				saver.save(sess, 'models/' + 'model.ckpt', global_step=1)
 				open('models/data','w').write(str([glob_op, glob_inp]))
-				data_it = get_data([glob_op,glob_inp])
+				data_it = get_data([glob_op,glob_inp], batch_size=2000)
 				for data in data_it:
-					[sess.run(bot.train_step[-1], {bot.input_nn: glob_inp, bot.score: glob_op}) for i in range(1)]
-
+					[sess.run(bot.train_step[-1], {bot.input_nn: data[1], bot.score: data[0]}) for i in range(100)]
+				glob_op = []
+				glob_inp = []
 				# [sess.run(bot.train_step[-1], {bot.input_nn: glob_inp, bot.score: glob_op}) for i in range(1)]
 			[sess.run(bot.train_step[-1], {bot.input_nn: inputs, bot.score: outputs}) for i in range(1)]
 			loss= sess.run(bot.loss, {bot.input_nn: inputs, bot.score: outputs})
