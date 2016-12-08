@@ -92,6 +92,13 @@ class Bot:
 			self.score = score
 			self.final = pred 
 
+def get_data(data, batch_size=1000):
+	for i in range(len(data)/batch_size):
+		if (i+1)*batch_size > len(data):
+			yield [data[0][i*batch_size:], data[1][i*batch_size:]]
+		else:
+			yield [data[0][i*batch_size: (i+1)*batch_size], data[1][i*batch_size: (i+1)*batch_size]]
+
 sess = tf.Session()
 
 bot = Bot('first')
@@ -152,6 +159,11 @@ while 1:
 				print "Saving model"
 				saver.save(sess, 'models/' + 'model.ckpt', global_step=1)
 				open('models/data','w').write(str([glob_op, glob_inp]))
+				data_it = get_data([glob_op,glob_inp])
+				for data in data_it:
+					[sess.run(bot.train_step[-1], {bot.input_nn: glob_inp, bot.score: glob_op}) for i in range(1)]
+
+				# [sess.run(bot.train_step[-1], {bot.input_nn: glob_inp, bot.score: glob_op}) for i in range(1)]
 			[sess.run(bot.train_step[-1], {bot.input_nn: inputs, bot.score: outputs}) for i in range(1)]
 			loss= sess.run(bot.loss, {bot.input_nn: inputs, bot.score: outputs})
 			z, h0, h3, h5 = sess.run([bot.final, bot.nnet["output_0"], bot.nnet["output_1"], bot.nnet["output_0"]], {bot.input_nn: inputs, bot.score: outputs})
